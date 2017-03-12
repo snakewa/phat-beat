@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+# -*- coding: utf-8 -*-
+from threading import Timer
 import atexit
 import re
 import socket
@@ -8,6 +9,8 @@ import time
 import os
 import signal
 import sys
+import json
+import io
 from datetime import datetime
 
 VLC_HOST = "127.0.0.1"
@@ -16,6 +19,7 @@ VLC_PORT = 9294
 LOG_LEVEL = 0
 
 PIDFILE = "/var/run/phatbeatd.pid"
+STATEFILE = "/tmp/phatbeatd.json"
 LOGFILE = "/var/log/phatbeatd.log"
 ERRFILE = "/var/log/phatbeatd.err"
 
@@ -25,6 +29,27 @@ LOG_INFO = 0
 LOG_WARN = 1
 LOG_FAIL = 2
 LOG_DEBUG = 3
+
+phatbeatd_state={}
+def read_state():
+  global phatbeatd_state
+  try:
+      with open(STATEFILE) as data_file:
+        phatbeatd_state = json.load(data_file)
+  except:
+      phatbeatd_state = {}
+
+def write_state(key,value):
+    try:
+        to_unicode = unicode
+    except NameError:
+        to_unicode = str
+    phatbeatd_state[key]=value
+    with io.open(STATEFILE, 'w', encoding='utf8') as outfile:
+      str_ = json.dumps(phatbeatd_state,
+                        indent=4, sort_keys=True,
+                        separators=(',', ':'), ensure_ascii=False)
+      outfile.write(to_unicode(str_))
 
 def log(msg, level=LOG_INFO):
     if level < LOG_LEVEL: return
@@ -191,13 +216,24 @@ if __name__ == "__main__":
         phatbeat.clear()
         phatbeat.show()
 
+        read_state()
+        if 'volume' in phatbeatd_state:
+            log('set initi volume: %d' % phatbeatd_state['volume'])
+            log(vlc.communicate( "volume %d" % phatbeatd_state['volume']))
+
+        def store_volume(cmd_response):
+            vol = [int(s) for s in cmd_response.split() if s.isdigit()]
+            if len(vol) >=1 :
+                write_state('volume', vol[0])
+            return cmd_response
+
         @phatbeat.on(phatbeat.BTN_VOLDN)
         def pb_volume_down(pin):
-            log(vlc.communicate("voldown"))
-
+            log(store_volume(vlc.communicate("voldown")))
+            
         @phatbeat.on(phatbeat.BTN_VOLUP)
         def pb_volume_up(pin):
-            log(vlc.communicate("volup"))
+            log(store_volume(vlc.communicate("volup")))
 
         @phatbeat.on(phatbeat.BTN_PLAYPAUSE)
         def pb_play_pause(pin):
