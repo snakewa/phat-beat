@@ -210,24 +210,38 @@ if __name__ == "__main__":
 
     if vlc.connect():
         import phatbeat
-        phatbeat.set_all(0,128,0,0.1)
-        phatbeat.show()
-        time.sleep(1)
-        phatbeat.clear()
-        phatbeat.show()
+        
+        
+        
 
         read_state()
+        time.sleep(1)
         #init vol
         if 'volume' in phatbeatd_state:
             log('set init volume: %d' % phatbeatd_state['volume'])
             log(vlc.communicate( "volume %d" % phatbeatd_state['volume']))
 
+        #init random
+        phatbeat.clear()
+        random = phatbeatd_state['random'] if 'random' in phatbeatd_state else False
+        random_state = 'on' if random else 'off'
+        if random:
+            phatbeat.set_all(0,0,128,0.1)
+        else:
+            phatbeat.set_all(0,128,0,0.1)
+        phatbeat.show()
+
+        log(vlc.communicate("random %s" % random_state ))
+
         def store_volume(cmd_response):
             vol = [int(s) for s in cmd_response.split() if s.isdigit()]
             if len(vol) >=1 :
+                log('store volume %d' % vol[0])
                 write_state('volume', vol[0])
             return cmd_response
 
+
+        # vlc more command : http://www.videolan.org/developers/vlc-branch/share/lua/intf/cli.lua
         @phatbeat.on(phatbeat.BTN_VOLDN)
         def pb_volume_down(pin):
             log(store_volume(vlc.communicate("voldown")))
@@ -246,6 +260,20 @@ if __name__ == "__main__":
         @phatbeat.on(phatbeat.BTN_FASTFWD)
         def pb_fast_forward(pin):
             log(vlc.communicate("next"))
+
+        @phatbeat.hold(phatbeat.BTN_FASTFWD)
+        def pb_random(pin):
+            random = phatbeatd_state['random'] if 'random' in phatbeatd_state else False
+            random = not random
+            random_state = 'on' if random else 'off'
+            write_state('random', random)
+            phatbeat.clear()
+            if random :
+                phatbeat.set_all(0,0,128,0.1)
+            else:
+                phatbeat.set_all(0,128,0,0.1)
+            log(vlc.communicate("random %s" % random_state ))
+            phatbeat.show()
 
         @phatbeat.on(phatbeat.BTN_REWIND)
         def pb_rewind(pin):
