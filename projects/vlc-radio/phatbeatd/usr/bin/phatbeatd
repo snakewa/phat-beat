@@ -19,7 +19,7 @@ VLC_PORT = 9294
 LOG_LEVEL = 0
 
 PIDFILE = "/var/run/phatbeatd.pid"
-STATEFILE = "/tmp/phatbeatd.json"
+STATEFILE = "/home/pi/phatbeatd.json"
 LOGFILE = "/var/log/phatbeatd.log"
 ERRFILE = "/var/log/phatbeatd.err"
 
@@ -217,8 +217,9 @@ if __name__ == "__main__":
         phatbeat.show()
 
         read_state()
+        #init vol
         if 'volume' in phatbeatd_state:
-            log('set initi volume: %d' % phatbeatd_state['volume'])
+            log('set init volume: %d' % phatbeatd_state['volume'])
             log(vlc.communicate( "volume %d" % phatbeatd_state['volume']))
 
         def store_volume(cmd_response):
